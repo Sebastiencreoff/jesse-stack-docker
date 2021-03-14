@@ -1,0 +1,12 @@
+# Env
+.DS_Store
+.idea
+.vscode
+.env
+.env.local
+**/__pycache__
+
+# Db internal files
+/dbData
+# Jesse strategy & config files
+/jesseData
