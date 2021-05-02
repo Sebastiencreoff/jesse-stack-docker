@@ -1,0 +1,3 @@
+[submodule "jesse"]
+	path = jesse
+	url = git@github.com:jesse-ai/jesse.git
