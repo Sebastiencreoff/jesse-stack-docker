@@ -3,29 +3,19 @@ version: '3.8'
 services:
 
   jesse:
-    image: salehmir/jesse:0.21.3
+    # image: salehmir/jesse:0.21.3
+    image: screoff/live_jesse:0.21.3
     depends_on:
       - db
-      - jesse-trades-info
     environment:
       ENV_DATABASES_POSTGRES_HOST: "db"
     ports:
       - 8888:8888
     volumes:
       - ./jesseData:/home
+      - ./jesse_live:/jesse_live
+      - ./jesse:/jesse-docker
 
-  jesse-trades-info:
-    image: jessetradesinfo/jesse-trades-info:v0.2.1
-    depends_on:
-      - db
-    environment:
-      DB_HOST: db
-      DB_NAME: jesse_db
-      DB_USER: jesse_user
-      DB_PASSWORD: password
-      DB_PORT: 5432
-    ports:
-      - 3000:3000
 
   db:
     image: postgres:12-alpine
