@@ -140,4 +140,11 @@ config = {
 
 
 def init(config: Dict[str, any], config_live: Dict[str, any]):
-    pass
+
+    from jesse.services.api import api
+    from jesse.store import install_routes
+
+    breakpoint()
+    install_routes()
+
+    api.initiate_drivers()
