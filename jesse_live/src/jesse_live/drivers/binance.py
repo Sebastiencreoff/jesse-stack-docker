@@ -1,3 +1,9 @@
+#! /usr/bin/env python
+
+import os
+
+from binance_f import RequestClient
+
 import jesse.helpers as jh
 from jesse.enums import order_types
 from jesse.exchanges.exchange import Exchange
@@ -12,6 +18,19 @@ class Binance(Exchange):
         super().__init__()
         self.name = name
         self.exchange_id = jh.generate_unique_id()
+
+        self.request_client = RequestClient()
+
+    @staticmethod
+    def exchange_information():
+        response = RequestClient().get_exchange_information()
+        return {
+            symbol.symbol: {
+                'price_precision': symbol.pricePrecision,
+                'qty_precision': symbol.quantityPrecision,
+            }
+            for symbol in response.symbols
+        }
 
     def market_order(self, symbol, qty, current_price, side, role, flags):
         """
