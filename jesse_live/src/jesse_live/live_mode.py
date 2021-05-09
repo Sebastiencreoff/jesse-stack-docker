@@ -5,11 +5,9 @@ from typing import Dict, Union
 import arrow
 import click
 import numpy as np
-import pandas as pd
 
 import jesse.helpers as jh
 import jesse.services.metrics as stats
-import jesse.services.required_candles as required_candles
 import jesse.services.selectors as selectors
 import jesse.services.table as table
 from jesse import exceptions
@@ -17,7 +15,6 @@ from jesse.config import config
 from jesse.enums import timeframes
 from jesse.models import Candle
 from jesse.modes.import_candles_mode.drivers import drivers
-from jesse.modes.import_candles_mode.drivers.interface import CandleExchange
 from jesse.modes.utils import save_daily_portfolio_balance
 from jesse.routes import router
 from jesse.services import charts, report
@@ -44,6 +41,7 @@ def run(dev: bool, chart: bool = False) -> None:
     if not jh.should_execute_silently():
         click.clear()
 
+    config['app']['is_unit_testing'] = dev
     # validate routes
     validate_routes(router)
 
@@ -123,6 +121,7 @@ def run(dev: bool, chart: bool = False) -> None:
 
 def fetch_candles(exchange, symbol, start_date: int) -> np.ndarray:
     try:
+        breakpoint()
         driver = drivers[exchange.title()]()
         response = driver.fetch(symbol, start_date * 1000)
         # Response of Binance is down in timestamp desc.
@@ -138,7 +137,7 @@ def fetch_candles(exchange, symbol, start_date: int) -> np.ndarray:
                     item['low'],
                     item['volume'],
                 )
-                for item in reversed(response)
+                for item in response
             ]
         )
     except KeyError:
@@ -260,24 +259,8 @@ def live(
                     )
 
             count = jh.timeframe_to_one_minutes(r.timeframe)
-            # 1m timeframe
-            breakpoint()
+            # # 1m timeframe
             if r.timeframe == timeframes.MINUTE_1:
-                r.strategy._execute()
-            elif (minute_count + 1) % count == 0:
-                breakpoint()
-                generated_candle = generate_candle_from_one_minutes(
-                    r.timeframe, candles[j]['candles'][(i - (count - 1)) : (i + 1)]
-                )
-                store.candles.add_candle(
-                    generated_candle,
-                    exchange,
-                    symbol,
-                    timeframe,
-                    with_execution=False,
-                    with_generation=False,
-                )
-
                 # print candle
                 if jh.is_debuggable('trading_candles'):
                     print_candle(
@@ -288,6 +271,34 @@ def live(
                         r.symbol,
                     )
                 r.strategy._execute()
+            elif (minute_count + 1) % count == 0:
+                current_candles = store.candles.get_candles(
+                    r.exchange, r.symbol, timeframes.MINUTE_1
+                )
+
+                if len(candles) >= count:
+                    generated_candle = generate_candle_from_one_minutes(
+                        r.timeframe, current_candles[-count:]
+                    )
+                    store.candles.add_candle(
+                        generated_candle,
+                        r.exchange,
+                        r.symbol,
+                        r.timeframe,
+                        with_execution=False,
+                        with_generation=False,
+                    )
+
+                    # print candle
+                    if jh.is_debuggable('trading_candles'):
+                        print_candle(
+                            store.candles.get_current_candle(
+                                r.exchange, r.symbol, r.timeframe
+                            ),
+                            False,
+                            r.symbol,
+                        )
+                    r.strategy._execute()
 
         # now check to see if there's any MARKET orders waiting to be executed
         store.orders.execute_pending_market_orders()
@@ -297,9 +308,6 @@ def live(
 
         # now check to see if there's any MARKET orders waiting to be executed
         store.orders.execute_pending_market_orders()
-
-        if i != 0 and i % 1440 == 0:
-            save_daily_portfolio_balance()
 
     if not jh.should_execute_silently():
         if jh.is_debuggable('trading_candles') or jh.is_debuggable(

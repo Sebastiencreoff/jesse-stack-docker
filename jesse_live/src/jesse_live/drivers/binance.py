@@ -3,9 +3,10 @@
 import os
 
 from binance_f import RequestClient
+from binance_f.model.constant import *
 
 import jesse.helpers as jh
-from jesse.enums import order_types
+from jesse.enums import order_types, sides
 from jesse.exchanges.exchange import Exchange
 from jesse.models import Order
 from jesse.store import store
@@ -17,14 +18,19 @@ class Binance(Exchange):
     def __init__(self, name="Binance"):
         super().__init__()
         self.name = name
-        self.exchange_id = jh.generate_unique_id()
+        self.exchange_id = '1'
 
-        self.request_client = RequestClient()
+        self.api_key = os.environ['Binance_api_key'].strip()
+        self.secret_key = os.environ['Binance_secret_key'].strip()
+        self.request_client = RequestClient(
+            api_key=self.api_key, secret_key=self.secret_key
+        )
 
     @staticmethod
     def exchange_information():
         response = RequestClient().get_exchange_information()
         return {
+            # done for testnet
             symbol.symbol: {
                 'price_precision': symbol.pricePrecision,
                 'qty_precision': symbol.quantityPrecision,
@@ -43,9 +49,20 @@ class Binance(Exchange):
         :param flags:
         :return:
         """
+        breakpoint()
+
+        self.request_client.change_initial_leverage(symbol, 10)
+        quantity = jh.prepare_qty(qty, side)
+        response = self.request_client.post_order(
+            symbol=symbol,
+            side=OrderSide.BUY if side == sides.BUY else OrderSide.SELL,
+            ordertype=OrderType.MARKET,
+            quantity=quantity,
+        )
+
         order = Order(
             {
-                "id": jh.generate_unique_id(),
+                "id": response.orderId,
                 "symbol": symbol,
                 "exchange": self.name,
                 "exchange_id": self.exchange_id,
@@ -59,8 +76,6 @@ class Binance(Exchange):
         )
 
         store.orders.add_order(order)
-
-        store.orders.to_execute.append(order)
 
         return order
 
@@ -129,6 +144,8 @@ class Binance(Exchange):
 
         :param symbol:
         """
+
+        response = self.request_client.cancel_all_orders(symbol)
         orders = filter(lambda o: o.is_new, store.orders.get_orders(self.name, symbol))
 
         for o in orders:
@@ -143,6 +160,7 @@ class Binance(Exchange):
         :param symbol:
         :param order_id:
         """
+        response = self.request_client.cancel_order(symbol, order_id)
         store.orders.get_order_by_id(self.name, symbol, order_id).cancel()
 
     def get_exec_inst(self, flags):

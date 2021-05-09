@@ -1,14 +1,16 @@
 #! /usr/bin/env python
 
 from typing import Dict, Union
-import arrow
 
+import arrow
 import numpy as np
+
+from jesse.enums import timeframes
 from jesse.modes.import_candles_mode.drivers import drivers
 from jesse.modes.import_candles_mode.drivers.interface import CandleExchange
-from jesse.enums import timeframes
-class CandleInput:
 
+
+class CandleInput:
     def __init__(self, exchange, symbol, timeframe: timeframes):
 
         self.symbol = symbol
@@ -18,13 +20,14 @@ class CandleInput:
         except KeyError:
             raise ValueError(f'{exchange} is not a supported exchange')
 
-
-    def preload_candles(self, candles_number) -> Dict[str, Dict[str, Union[str, np.ndarray]]]:
+    def preload_candles(
+        self, candles_number
+    ) -> Dict[str, Dict[str, Union[str, np.ndarray]]]:
 
         # Get candles in 1 minute.
-        candles = self.driver.fetch(self.symbol, arrow.utcnow().int_timestamp * 1000 - candles_number * 60000)
-
-        breakpoint()
+        candles = self.driver.fetch(
+            self.symbol, arrow.utcnow().int_timestamp * 1000 - candles_number * 60000
+        )
 
         print(candles)
 

@@ -2,7 +2,7 @@
 
 from typing import Dict
 
-from jesse_live.drivers import Binance
+from jesse_live.drivers import Binance, TestNetBinance
 
 CONFIG_LIVE = {
     # these values are related to the user's environment
@@ -44,8 +44,8 @@ CONFIG_LIVE = {
                     {'asset': 'BTC', 'balance': 0},
                 ],
             },
-            # https://www.binance.com
-            'Binance Futures': {
+            # https://testnet.binancefuture.com
+            'Testnet Binance Futures': {
                 'fee': 0.0004,
                 # backtest mode only: accepted are 'spot' and 'futures'
                 'type': 'futures',
@@ -87,7 +87,7 @@ CONFIG_LIVE = {
     # These values are just placeholders used by Jesse at runtime
     'app': {
         # dict of registered live trade drivers
-        'live_drivers': {'Binance': Binance},
+        'live_drivers': {'Binance': Binance, 'Testnet Binance Futures': TestNetBinance},
     },
 }
 
@@ -103,7 +103,8 @@ def init(config: Dict[str, any], config_live: Dict[str, any]):
 
     for key, class_ in config['app']['live_drivers'].items():
         exchange = selectors.get_exchange(key)
-        exchange.vars['precisions'] = class_.exchange_information()
+        if exchange:
+            exchange.vars['precisions'] = class_.exchange_information()
 
     install_routes()
     api.initiate_drivers()
