@@ -41,14 +41,14 @@ def run(dev: bool, chart: bool = False) -> None:
     if not jh.should_execute_silently():
         click.clear()
 
-    config['app']['is_unit_testing'] = dev
+    config["app"]["is_unit_testing"] = dev
     # validate routes
     validate_routes(router)
 
     # initiate candle store
     store.candles.init_storage(5000)
 
-    print('preloading candles...')
+    print("preloading candles...")
 
     candles = preload_candles()
     click.clear()
@@ -57,22 +57,22 @@ def run(dev: bool, chart: bool = False) -> None:
         # print candles table
         key = f"{config['app']['considering_candles'][0][0]}-{config['app']['considering_candles'][0][1]}"
         table.key_value(
-            stats.candles(candles[key]['candles']),
-            'candles',
-            alignments=('left', 'right'),
+            stats.candles(candles[key]["candles"]),
+            "candles",
+            alignments=("left", "right"),
         )
-        print('\n')
+        print("\n")
 
         # print routes table
         table.multi_value(stats.routes(router.routes))
-        print('\n')
+        print("\n")
 
         # print guidance for debugging candles
-        if jh.is_debuggable('trading_candles') or jh.is_debuggable(
-            'shorter_period_candles'
+        if jh.is_debuggable("trading_candles") or jh.is_debuggable(
+            "shorter_period_candles"
         ):
             print(
-                '     Symbol  |     timestamp    | open | close | high | low | volume'
+                "     Symbol  |     timestamp    | open | close | high | low | volume"
             )
 
     # run backtest simulation
@@ -110,10 +110,10 @@ def run(dev: bool, chart: bool = False) -> None:
                 change.append(((last.close - first.close) / first.close) * 100.0)
 
             data = report.portfolio_metrics()
-            data.append(['Market Change', f"{str(round(np.average(change), 2))}%"])
-            print('\n')
-            table.key_value(data, 'Metrics', alignments=('left', 'right'))
-            print('\n')
+            data.append(["Market Change", f"{str(round(np.average(change), 2))}%"])
+            print("\n")
+            table.key_value(data, "Metrics", alignments=("left", "right"))
+            print("\n")
 
             if chart:
                 charts.portfolio_vs_asset_returns()
@@ -121,7 +121,6 @@ def run(dev: bool, chart: bool = False) -> None:
 
 def fetch_candles(exchange, symbol, start_date: int) -> np.ndarray:
     try:
-        breakpoint()
         driver = drivers[exchange.title()]()
         response = driver.fetch(symbol, start_date * 1000)
         # Response of Binance is down in timestamp desc.
@@ -130,30 +129,30 @@ def fetch_candles(exchange, symbol, start_date: int) -> np.ndarray:
         return np.array(
             [
                 (
-                    item['timestamp'],
-                    item['open'],
-                    item['close'],
-                    item['high'],
-                    item['low'],
-                    item['volume'],
+                    item["timestamp"],
+                    item["open"],
+                    item["close"],
+                    item["high"],
+                    item["low"],
+                    item["volume"],
                 )
                 for item in response
             ]
         )
     except KeyError:
-        raise ValueError(f'{exchange} is not a supported exchange')
+        raise ValueError(f"{exchange} is not a supported exchange")
 
 
 def preload_candles() -> Dict[str, Dict[str, Union[str, np.ndarray]]]:
 
     finish_date = arrow.utcnow().int_timestamp * 1000 - 60000
     start_date = (
-        arrow.utcnow().int_timestamp - config['env']['data']['warmup_candles_num'] * 60
+        arrow.utcnow().int_timestamp - config["env"]["data"]["warmup_candles_num"] * 60
     )
 
     # download candles for the duration of the backtest
     candles = {}
-    for c in config['app']['considering_candles']:
+    for c in config["app"]["considering_candles"]:
         exchange, symbol = c[0], c[1]
 
         key = jh.key(exchange, symbol)
@@ -173,9 +172,9 @@ def preload_candles() -> Dict[str, Dict[str, Union[str, np.ndarray]]]:
         )
 
         candles[key] = {
-            'exchange': exchange,
-            'symbol': symbol,
-            'candles': np.array(candles_tuple),
+            "exchange": exchange,
+            "symbol": symbol,
+            "candles": np.array(candles_tuple),
         }
 
     return candles
@@ -195,7 +194,7 @@ def live(
 ) -> None:
 
     key = f"{config['app']['considering_candles'][0][0]}-{config['app']['considering_candles'][0][1]}"
-    first_candles_set = candles[key]['candles']
+    first_candles_set = candles[key]["candles"]
 
     store.app.starting_time = arrow.get(first_candles_set[-1][0])
     store.app.time = arrow.get(first_candles_set[-1][0])
@@ -228,7 +227,7 @@ def live(
     # add initial balance
     save_daily_portfolio_balance()
 
-    print('Executing live trading...')
+    print("Executing live trading...")
 
     while RUNNING:
         # update time
@@ -240,29 +239,31 @@ def live(
 
         # now that all new generated candles are ready, execute
         for r in router.routes:
+
             symbol_key = jh.key(r.exchange, r.symbol)
             short_candles = fetch_candles(
                 r.exchange, r.symbol, store.app.time.int_timestamp
             )
             if len(short_candles):
                 short_candles[0] = _get_fixed_jumped_candle(
-                    candles[symbol_key]['candles'][0], short_candles[0]
+                    candles[symbol_key]["candles"][0], short_candles[0]
                 )
                 for candle in short_candles:
                     store.candles.add_candle(
                         candle,
                         r.exchange,
                         r.symbol,
-                        '1m',
+                        "1m",
                         with_execution=False,
                         with_generation=False,
                     )
 
             count = jh.timeframe_to_one_minutes(r.timeframe)
             # # 1m timeframe
+            breakpoint()
             if r.timeframe == timeframes.MINUTE_1:
                 # print candle
-                if jh.is_debuggable('trading_candles'):
+                if jh.is_debuggable("trading_candles"):
                     print_candle(
                         store.candles.get_current_candle(
                             r.exchange, r.symbol, r.timeframe
@@ -290,7 +291,7 @@ def live(
                     )
 
                     # print candle
-                    if jh.is_debuggable('trading_candles'):
+                    if jh.is_debuggable("trading_candles"):
                         print_candle(
                             store.candles.get_current_candle(
                                 r.exchange, r.symbol, r.timeframe
@@ -300,20 +301,17 @@ def live(
                         )
                     r.strategy._execute()
 
-        # now check to see if there's any MARKET orders waiting to be executed
-        store.orders.execute_pending_market_orders()
+        # Reset orders added as they are already executed.
+        store.orders.reset()
 
         if minute_count == 0:
             save_daily_portfolio_balance()
 
-        # now check to see if there's any MARKET orders waiting to be executed
-        store.orders.execute_pending_market_orders()
-
     if not jh.should_execute_silently():
-        if jh.is_debuggable('trading_candles') or jh.is_debuggable(
-            'shorter_period_candles'
+        if jh.is_debuggable("trading_candles") or jh.is_debuggable(
+            "shorter_period_candles"
         ):
-            print('\n')
+            print("\n")
 
     for r in router.routes:
         r.strategy._terminate()
@@ -370,7 +368,7 @@ def _simulate_price_change_effect(
                         storable_temp_candle,
                         exchange,
                         symbol,
-                        '1m',
+                        "1m",
                         with_execution=False,
                         with_generation=False,
                     )
@@ -393,7 +391,7 @@ def _simulate_price_change_effect(
                 real_candle,
                 exchange,
                 symbol,
-                '1m',
+                "1m",
                 with_execution=False,
                 with_generation=False,
             )

@@ -55,6 +55,14 @@ class LSTimingStrategy(Strategy):
         self.stop_loss = qty, self.price - (self.price * STOP_LOSS_PERCENT)
         self.current_pyramiding_levels = self.price
 
+        print(f"LONG buy: qty: {qty}, price:{self.price}")
+        print(
+            f"LONG take_profit: qty: {qty}, price:{self.long_ema * TAKE_PROFIT_PERCENT}"
+        )
+        print(
+            f"LONG stop_loss: qty: {qty}, price:{self.price - (self.price * STOP_LOSS_PERCENT)}"
+        )
+
     def go_short(self):
         qty = utils.size_to_qty(
             self.capital * CAPITAL_PERCENT, self.price, fee_rate=self.fee_rate
@@ -65,6 +73,14 @@ class LSTimingStrategy(Strategy):
         self.stop_loss = qty, self.price + (self.price * STOP_LOSS_PERCENT)
         self.current_pyramiding_levels = self.price
 
+        print(f"SHORT sell: qty: {qty}, price:{self.price}")
+        print(
+            f"SHORT take_profit: qty: {qty}, price:{self.long_ema / TAKE_PROFIT_PERCENT}"
+        )
+        print(
+            f"SHORT stop_loss: qty: {qty}, price:{self.price + (self.price * STOP_LOSS_PERCENT)}"
+        )
+
     def update_position(self):
         if self.is_long:
             # Follow the price if the price raised.
@@ -73,6 +89,10 @@ class LSTimingStrategy(Strategy):
                     self.current_pyramiding_levels * UPDATE_PERCENT
                 )
                 self.stop_loss = self.position.qty, self.current_pyramiding_levels
+                print(
+                    f"LONG UPDATE stop_loss: qty: {self.position.qty}, price:{self.current_pyramiding_levels}"
+                )
+
         if self.is_short:
             # Follow the price if the price dropped.
             if self.close < self.current_pyramiding_levels * (1 - 3 * UPDATE_PERCENT):
@@ -80,6 +100,9 @@ class LSTimingStrategy(Strategy):
                     self.current_pyramiding_levels * UPDATE_PERCENT
                 )
                 self.stop_loss = self.position.qty, self.current_pyramiding_levels
+                print(
+                    f"SHORT UPDATE stop_loss: qty: {self.position.qty}, price:{self.current_pyramiding_levels}"
+                )
 
     @property
     def bullish(self):
