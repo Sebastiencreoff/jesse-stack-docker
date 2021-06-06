@@ -53,6 +53,14 @@ class BaseBinance(Exchange):
     def prepare_qty(self, qty, side):
         return str(abs(jh.prepare_qty(qty, side)))
 
+    def prepare_price(self, symbol, price):
+        return round(
+            price,
+            selectors.get_exchange(self.name).vars['precisions'][symbol][
+                "price_precision"
+            ],
+        )
+
     def market_order(self, symbol, qty, current_price, side, role, flags):
         """
 
@@ -64,9 +72,8 @@ class BaseBinance(Exchange):
         :param flags:
         :return:
         """
-        breakpoint()
-
-        self.initial_leverage(symbol)
+        dashless_symbol = jh.dashless_symbol(symbol)
+        self.initial_leverage(dashless_symbol)
         quantity = self.prepare_qty(qty, side)
 
         position_side = PositionSide.INVALID
@@ -82,7 +89,7 @@ class BaseBinance(Exchange):
 
         client_order_id = jh.generate_unique_id()
         response = self.request_client.post_order(
-            symbol,
+            dashless_symbol,
             order_side,
             OrderType.MARKET,
             newClientOrderId=client_order_id,
@@ -121,7 +128,7 @@ class BaseBinance(Exchange):
         :param flags:
         :return:
         """
-        breakpoint()
+        dashless_symbol = jh.dashless_symbol(symbol)
         # Set to str to
         quantity = self.prepare_qty(qty, side)
 
@@ -134,14 +141,16 @@ class BaseBinance(Exchange):
                 PositionSide.SHORT if side == sides.BUY else PositionSide.LONG
             )
 
+        breakpoint()
+        price = self.prepare_price(symbol, price)
         client_order_id = jh.generate_unique_id()
         response = self.request_client.post_order(
-            symbol,
+            dashless_symbol,
             self.order_side(side),
             OrderType.LIMIT,
             newClientOrderId=client_order_id,
             positionSide=position_side,
-            price=price,
+            price=str(price),
             quantity=quantity,
             timeInForce=TimeInForce.GTC,
         )
@@ -175,7 +184,7 @@ class BaseBinance(Exchange):
         :param flags:
         :return:
         """
-
+        dashless_symbol = jh.dashless_symbol(symbol)
         breakpoint()
         quantity = self.prepare_qty(qty, side)
 
@@ -194,10 +203,12 @@ class BaseBinance(Exchange):
             stop_price = price
             price = price * 0.99
         else:
-            stop_price = price * 1.01
+            stop_price = price
 
+        price = self.prepare_price(symbol, price)
+        stop_price = self.prepare_price(symbol, stop_price)
         response = self.request_client.post_order(
-            symbol,
+            dashless_symbol,
             self.order_side(side),
             OrderType.STOP,
             newClientOrderId=client_order_id,

@@ -18,8 +18,7 @@ class Binance(BaseBinance):
 
         super().__init__(self.api_key, name, self.secret_key, dev=False)
 
-    @staticmethod
-    def exchange_information():
+    def _get_precisions(self):
         response = RequestClient().get_exchange_information()
         return {
             # done for testnet

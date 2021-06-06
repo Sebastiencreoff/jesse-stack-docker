@@ -50,7 +50,7 @@ def init(config: Dict[str, any], config_live: Dict[str, any]):
     for key, class_ in config["app"]["live_drivers"].items():
         exchange = selectors.get_exchange(key)
         if exchange:
-            exchange.vars["precisions"] = class_.exchange_information()
+            exchange.vars["precisions"] = class_()._get_precisions()
 
     install_routes()
     api.initiate_drivers()

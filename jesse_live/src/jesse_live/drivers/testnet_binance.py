@@ -20,12 +20,12 @@ class TestNetBinance(BaseBinance):
         )
         super().__init__(self.api_key, name, self.secret_key, dev=True)
 
-    @staticmethod
-    def exchange_information():
+    def _get_precisions(self):
+
         response = RequestClient().get_exchange_information()
         return {
             # done for testnet
-            symbol.symbol.replace("_PERP", "T"): {
+            symbol.symbol.replace("_PERP", "T").replace("USD", "-USD"): {
                 "price_precision": symbol.pricePrecision,
                 "qty_precision": symbol.quantityPrecision,
             }

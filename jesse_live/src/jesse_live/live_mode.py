@@ -17,7 +17,9 @@ from jesse.models import Candle
 from jesse.modes.import_candles_mode.drivers import drivers
 from jesse.modes.utils import save_daily_portfolio_balance
 from jesse.routes import router
-from jesse.services import charts, report
+from jesse.services import charts
+from jesse.services import logger as jesse_logger
+from jesse.services import report
 from jesse.services.cache import cache
 from jesse.services.candle import (
     candle_includes_price,
@@ -75,7 +77,7 @@ def run(dev: bool, chart: bool = False) -> None:
                 "     Symbol  |     timestamp    | open | close | high | low | volume"
             )
 
-    # run backtest simulation
+    # run live mode
     live(candles, dev)
 
     if not jh.should_execute_silently():
@@ -122,6 +124,7 @@ def run(dev: bool, chart: bool = False) -> None:
 def fetch_candles(exchange, symbol, start_date: int) -> np.ndarray:
     try:
         driver = drivers[exchange.title()]()
+        jesse_logger.info(f"Fetching symbol: {symbol} from {arrow.get(start_date)}")
         response = driver.fetch(symbol, start_date * 1000)
         # Response of Binance is down in timestamp desc.
         # Transform from {'symbol': 'DOGE-USDT', 'exchange': 'Binance', 'timestamp': 1619880780000, 'open': 0.35787, 'close': 0.35823, 'high': 0.3585, 'low': 0.3578, 'volume': 1264391.4}
@@ -260,7 +263,6 @@ def live(
 
             count = jh.timeframe_to_one_minutes(r.timeframe)
             # # 1m timeframe
-            breakpoint()
             if r.timeframe == timeframes.MINUTE_1:
                 # print candle
                 if jh.is_debuggable("trading_candles"):
@@ -271,7 +273,7 @@ def live(
                         False,
                         r.symbol,
                     )
-                r.strategy._execute()
+
             elif (minute_count + 1) % count == 0:
                 current_candles = store.candles.get_candles(
                     r.exchange, r.symbol, timeframes.MINUTE_1
@@ -299,10 +301,12 @@ def live(
                             False,
                             r.symbol,
                         )
-                    r.strategy._execute()
+            breakpoint()
+            r.strategy._execute()
 
-        # Reset orders added as they are already executed.
-        store.orders.reset()
+            # now check to see if there's any MARKET orders waiting to be executed
+            store.orders.execute_pending_market_orders()
+            orders = store.orders.get_orders(r.exchange, r.symbol)
 
         if minute_count == 0:
             save_daily_portfolio_balance()
